@@ -59,7 +59,7 @@ int main(int argc, char **argv)
 	if (ipv4)
 		hints.ai_family = AF_INET;
 	else
-		hints.ai_family = ipv6_enabled() ? AF_INET6 : AF_INET;
+		hints.ai_family = AF_INET6;
 
 	/* sctp_peeloff(3) must be from 1 to Many style socket */
 	hints.ai_socktype = SOCK_SEQPACKET;

@@ -10,8 +10,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include <unistd.h>
-
 #ifndef SO_PEERSEC
 #define SO_PEERSEC 31
 #endif
@@ -27,8 +25,9 @@
 void usage(char *progname)
 {
 	fprintf(stderr,
-		"usage:  %s [-f file] [-n] protocol port\n"
+		"usage:  %s [-4] [-f file] [-n] protocol port\n"
 		"\nWhere:\n\t"
+		"-4        Listen on IPv4 addresses only.\n\t"
 		"-f        Write a line to the file when listening starts.\n\t"
 		"-n        No peer context will be available therefore send\n\t"
 		"          \"nopeer\" message to client, otherwise the peer context\n\t"
@@ -38,21 +37,6 @@ void usage(char *progname)
 	exit(1);
 }
 
-static bool ipv6_enabled(void)
-{
-	int fd;
-
-	if (access("/proc/net/if_inet6", F_OK) != 0)
-		return false;
-
-	fd = socket(AF_INET6, SOCK_DGRAM, 0);
-	if (fd < 0)
-		return false;
-
-	close(fd);
-	return true;
-}
-
 int main(int argc, char **argv)
 {
 	int sock, result, opt, sockprotocol, on = 1;
@@ -60,11 +44,14 @@ int main(int argc, char **argv)
 	struct sockaddr_storage sin;
 	struct addrinfo hints, *res;
 	char byte;
-	bool nopeer = false;
+	bool nopeer = false, ipv4 = false;
 	char *flag_file = NULL;
 
-	while ((opt = getopt(argc, argv, "f:n")) != -1) {
+	while ((opt = getopt(argc, argv, "4f:n")) != -1) {
 		switch (opt) {
+		case '4':
+			ipv4 = true;
+			break;
 		case 'f':
 			flag_file = optarg;
 			break;
@@ -81,7 +68,7 @@ int main(int argc, char **argv)
 
 	memset(&hints, 0, sizeof(struct addrinfo));
 	hints.ai_flags = AI_PASSIVE;
-	hints.ai_family = ipv6_enabled() ? AF_INET6 : AF_INET;
+	hints.ai_family = ipv4 ? AF_INET : AF_INET6;
 
 	if (!strcmp(argv[optind], "tcp")) {
 		hints.ai_socktype = SOCK_STREAM;

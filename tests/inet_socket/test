@@ -89,6 +89,8 @@ sub server_start {
     my ( $runcon_args, $args ) = @_;
     my $pid;
 
+    $args = "-4 $args" unless $test_ipv6;
+
     system("mkfifo $basedir/flag");
 
     if ( ( $pid = fork() ) == 0 ) {
@@ -379,7 +381,7 @@ if ($test_ipsec) {
     # Kill the server.
     server_end($pid);
 
-    if ( not $is_stream && $test_ipv6 ) {
+    if ( !$is_stream && $test_ipv6 ) {
 
    # Start the server for IPSEC test using IPv6 but do not request peer context.
         $pid = server_start( "-t test_inet_server_t", "-n $proto 65535" );

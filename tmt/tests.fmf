@@ -121,8 +121,6 @@
     - xfsprogs-devel
     - libuuid-devel
     - e2fsprogs
-    - f2fs-tools
-    - jfsutils
     - dosfstools
     - btrfs-progs
     - rdma-core-devel
