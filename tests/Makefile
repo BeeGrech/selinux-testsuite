@@ -174,8 +174,14 @@ ifeq ($(shell [ -d /sys/fs/selinux/class/memfd_file ] && grep -q 1 $(SELINUXFS)/
 SUBDIRS += memfd
 endif
 
+# Skip when the running kernel was built without io_uring support, or
+# when liburing-devel (providing liburing.h) isn't installed to build against.
 ifeq ($(shell grep -q io_uring $(POLDEV)/include/support/all_perms.spt && echo true),true)
+ifeq ($(shell grep -qE '^CONFIG_IO_URING=y' /lib/modules/$$(uname -r)/config 2>/dev/null && echo true),true)
+ifeq ($(shell test -e $(INCLUDEDIR)/liburing.h && echo true),true)
 SUBDIRS += io_uring
+endif
+endif
 endif
 
 ifeq ($(DISTRO),RHEL4)
