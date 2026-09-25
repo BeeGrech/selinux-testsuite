@@ -12,7 +12,7 @@ BEGIN {
 }
 use lib $basedir;
 use Filesystem
-  qw(check_config udisks2_stop udisks2_restart get_loop_dev attach_dev make_fs mk_mntpoint_1 mk_mntpoint_2 cleanup cleanup1 reaper nfs_gen_opts);
+  qw(check_config udisks2_stop udisks2_restart get_loop_dev attach_dev make_fs mk_mntpoint_1 mk_mntpoint_2 cleanup cleanup1 reaper nfs_gen_opts ext4_native_quota_supported);
 
 BEGIN {
     # extract fs_type
@@ -64,10 +64,15 @@ BEGIN {
     }
     elsif ( $fs_type eq "ext4" ) {
 
-        # EXT4 has native quota support since kernel 3.6
+        # EXT4 has native quota support since kernel 3.6, but some kernels
+        # (e.g. built without CONFIG_QUOTA) can't mount a filesystem with
+        # the quota feature at all, which would break every ext4 mount in
+        # this script since mkfs always sets the feature. Probe it.
         $kvercur = `uname -r`;
         chomp($kvercur);
-        if ( `$basedir/../kvercmp $kvercur 3.6` >= 1 ) {
+        if ( `$basedir/../kvercmp $kvercur 3.6` >= 1
+            && ext4_native_quota_supported($basedir) )
+        {
             $ext4_quota   = 1;
             $make_fs_opts = "-O quota";
         }

@@ -1,7 +1,28 @@
 package Filesystem;
 use Exporter qw(import);
 our @EXPORT_OK =
-  qw(check_config udisks2_stop udisks2_restart get_loop_dev attach_dev make_fs mk_mntpoint_1 mk_mntpoint_2 cleanup cleanup1 reaper nfs_gen_opts);
+  qw(check_config udisks2_stop udisks2_restart get_loop_dev attach_dev make_fs mk_mntpoint_1 mk_mntpoint_2 cleanup cleanup1 reaper nfs_gen_opts ext4_native_quota_supported);
+
+# EXT4 native quota (-O quota) is a RO_COMPAT feature: any kernel that
+# doesn't support it (e.g. built without CONFIG_QUOTA) will refuse to
+# mount *any* filesystem carrying that feature bit, not just quota-using
+# ones. Probe it directly instead of relying on kernel version alone, so
+# a single unmountable feature flag can't take down the whole test.
+sub ext4_native_quota_supported {
+    my ($base) = @_;
+    my $img = "$base/.ext4_quota_probe.img";
+    my $mnt = "$base/.ext4_quota_probe.mnt";
+
+    system("dd if=/dev/zero of=$img bs=1M count=8 status=none 2>/dev/null");
+    system("mkfs.ext4 -q -F -O quota $img >/dev/null 2>&1");
+    mkdir($mnt) unless -d $mnt;
+    my $rc = system("mount -o loop $img $mnt >/dev/null 2>&1");
+    system("umount $mnt >/dev/null 2>&1") if $rc == 0;
+    rmdir($mnt);
+    unlink($img);
+
+    return $rc == 0 ? 1 : 0;
+}
 
 sub check_config {
     my ( $base, $fanotify_fs, $nfs_enabled, $vfat_enabled ) = @_;
