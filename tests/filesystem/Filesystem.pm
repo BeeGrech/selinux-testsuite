@@ -1,7 +1,7 @@
 package Filesystem;
 use Exporter qw(import);
 our @EXPORT_OK =
-  qw(check_config udisks2_stop udisks2_restart get_loop_dev attach_dev make_fs mk_mntpoint_1 mk_mntpoint_2 cleanup cleanup1 reaper nfs_gen_opts ext4_native_quota_supported);
+  qw(check_config udisks2_stop udisks2_restart get_loop_dev attach_dev make_fs mk_mntpoint_1 mk_mntpoint_2 cleanup cleanup1 reaper nfs_gen_opts ext4_native_quota_supported legacy_quota_supported);
 
 # EXT4 native quota (-O quota) is a RO_COMPAT feature: any kernel that
 # doesn't support it (e.g. built without CONFIG_QUOTA) will refuse to
@@ -18,6 +18,33 @@ sub ext4_native_quota_supported {
     mkdir($mnt) unless -d $mnt;
     my $rc = system("mount -o loop $img $mnt >/dev/null 2>&1");
     system("umount $mnt >/dev/null 2>&1") if $rc == 0;
+    rmdir($mnt);
+    unlink($img);
+
+    return $rc == 0 ? 1 : 0;
+}
+
+# The legacy quota mechanism (external vfsv0 quota files, activated via
+# quotacheck(8) + quotaon(8)) needs a registered kernel quota format
+# (CONFIG_QFMT_V1/V2) just as much as native quota does - it is not a
+# fallback that works whenever native quota doesn't. Probe it the same
+# way, so callers can tell "use legacy" apart from "no quota mechanism
+# is usable at all on this kernel".
+sub legacy_quota_supported {
+    my ($base) = @_;
+    my $img = "$base/.ext4_quota_probe.img";
+    my $mnt = "$base/.ext4_quota_probe.mnt";
+
+    system("dd if=/dev/zero of=$img bs=1M count=8 status=none 2>/dev/null");
+    system("mkfs.ext4 -q -F $img >/dev/null 2>&1");
+    mkdir($mnt) unless -d $mnt;
+    my $rc = system("mount -o loop,usrquota,grpquota $img $mnt >/dev/null 2>&1");
+    if ( $rc == 0 ) {
+        system("quotacheck -ugF vfsv0 $mnt >/dev/null 2>&1");
+        $rc = system("quotaon -ug $mnt >/dev/null 2>&1");
+        system("quotaoff -ug $mnt >/dev/null 2>&1") if $rc == 0;
+    }
+    system("umount $mnt >/dev/null 2>&1");
     rmdir($mnt);
     unlink($img);
 
