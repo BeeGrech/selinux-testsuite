@@ -157,9 +157,14 @@ endif
 endif
 
 # MPTCP is supported since kernel 5.6, but only works with SELinux
-# since 6.5
+# since 6.5. Skip when the running kernel was built without MPTCP: the
+# net.mptcp.enabled sysctl only exists when CONFIG_MPTCP is set, so this
+# works for hand-built/booted kernels too, unlike checking
+# /lib/modules/$(uname -r)/config directly.
 ifneq ($(shell ./kvercmp $$(uname -r) 6.5),-1)
+ifeq ($(shell test -e /proc/sys/net/mptcp/enabled && echo true),true)
 SUBDIRS += inet_socket/mptcp
+endif
 endif
 
 # nlmsg test dependencies: policy >= 30, nlmsg permission, netlink_xperm capability
